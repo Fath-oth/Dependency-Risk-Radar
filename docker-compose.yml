@@ -1,0 +1,44 @@
+version: "3.9"
+services:
+  backend:
+    build: ./backend
+    container_name: drr-backend
+    ports: ["8000:8000"]
+    volumes:
+      - ./backend:/app
+      - drr_reports:/tmp/drr_reports
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - NVD_API_KEY=${NVD_API_KEY:-}
+      - OUTPUT_DIR=/tmp/drr_reports
+      - DEBUG=false
+    depends_on: [redis]
+    networks: [drr]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: drr-frontend
+    ports: ["3000:80"]
+    depends_on: [backend]
+    networks: [drr]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: drr-redis
+    networks: [drr]
+    restart: unless-stopped
+
+volumes:
+  drr_reports:
+networks:
+  drr:
+    driver: bridge

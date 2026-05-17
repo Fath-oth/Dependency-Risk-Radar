@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+*.egg
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment
+.env
+*.env.local
+
+# Reports output (keep examples)
+drr_reports/
+/tmp/drr_reports/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Android artifacts (for testing)
+*.apk
+*.aab
+!tests/fixtures/*.apk
