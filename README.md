@@ -28,10 +28,10 @@ Dependency Risk Radar automatically audits Android/Java project dependencies, ge
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/your-org/dependency-risk-radar
+git clone https://github.com/Fath-oth/dependency-risk-radar
 cd dependency-risk-radar
 cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY
+# Edit .env and set LLM_API_KEY
 
 # 2. Start all services
 docker-compose up -d
