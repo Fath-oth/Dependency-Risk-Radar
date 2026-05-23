@@ -4,6 +4,7 @@
 
 Dependency Risk Radar automatically audits Android/Java project dependencies, generates a standards-compliant SBOM, and produces a multicriteria risk score enriched by AI recommendations.
 
+[![Website](https://img.shields.io/badge/Website-website--radar.vercel.app-blue?style=flat-square&logo=vercel&logoColor=white)](https://website-radar.vercel.app)
 ---
 
 ## Features
