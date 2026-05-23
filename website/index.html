@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dependency Risk Radar — Supply Chain Security for Android & Java</title>
+  <meta name="description" content="Open-source platform that audits Android and Java dependencies across CVE exposure, version obsolescence, licence compliance, and tracker detection." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --white:     #ffffff;
+      --bg:        #f8f9fc;
+      --bg2:       #f1f3f8;
+      --bg3:       #e8ebf2;
+      --surface:   #ffffff;
+      --border:    #e2e6ef;
+      --border2:   #cdd3e0;
+      --blue:      #2f5fff;
+      --blue-lt:   #eef1ff;
+      --blue-mid:  #dde3ff;
+      --cyan:      #0891b2;
+      --green:     #059669;
+      --green-lt:  #ecfdf5;
+      --yellow:    #d97706;
+      --yellow-lt: #fffbeb;
+      --orange:    #ea580c;
+      --orange-lt: #fff7ed;
+      --red:       #dc2626;
+      --red-lt:    #fef2f2;
+      --purple:    #7c3aed;
+      --purple-lt: #f5f3ff;
+      --text:      #111827;
+      --text2:     #374151;
+      --muted:     #6b7280;
+      --muted2:    #9ca3af;
+      --radius:    12px;
+      --radius-lg: 18px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+      --shadow:    0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,.1), 0 4px 12px rgba(0,0,0,.06);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ─── NAV ─────────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 64px;
+      background: rgba(255,255,255,.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: .6rem;
+      font-weight: 700; font-size: 1rem; color: var(--text);
+    }
+    .nav-logo .icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--blue) 0%, #5b8aff 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; box-shadow: 0 2px 8px rgba(47,95,255,.3);
+    }
+    .nav-links { display: flex; align-items: center; gap: 1.8rem; list-style: none; font-size: .87rem; }
+    .nav-links a { color: var(--muted); font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: .45rem 1.1rem;
+      background: var(--blue); color: #fff !important;
+      border-radius: 8px; font-weight: 600;
+      box-shadow: 0 2px 8px rgba(47,95,255,.25);
+      transition: background .2s, transform .15s, box-shadow .2s;
+    }
+    .nav-cta:hover { background: #1a4aed !important; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(47,95,255,.35); }
+
+    /* ─── HERO ────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 9rem 2rem 6rem;
+      background: var(--white);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 900px; height: 600px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(47,95,255,.07) 0%, transparent 70%);
+    }
+    .hero-dots {
+      position: absolute; inset: 0;
+      background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(ellipse 70% 80% at 50% 40%, black, transparent);
+      opacity: .7;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .35rem 1rem;
+      background: var(--blue-lt); border: 1px solid var(--blue-mid);
+      border-radius: 100px; font-size: .78rem; font-weight: 700;
+      color: var(--blue); letter-spacing: .05em; text-transform: uppercase;
+      margin-bottom: 1.6rem;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); display: inline-block; }
+    h1 {
+      font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+      font-weight: 800; line-height: 1.1; letter-spacing: -.03em;
+      color: var(--text); margin-bottom: 1.4rem;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, var(--blue) 0%, #7b61ff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.1rem; color: var(--muted); max-width: 560px;
+      margin: 0 auto 2.6rem; line-height: 1.75; font-weight: 400;
+    }
+    .hero-actions { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .7rem 1.5rem; border-radius: 10px;
+      font-weight: 600; font-size: .92rem; font-family: 'Sora', sans-serif;
+      transition: transform .15s, box-shadow .2s; cursor: pointer; border: none;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: var(--blue); color: #fff;
+      box-shadow: 0 4px 14px rgba(47,95,255,.3);
+    }
+    .btn-primary:hover { background: #1a4aed; box-shadow: 0 6px 20px rgba(47,95,255,.4); }
+    .btn-secondary {
+      background: var(--white); color: var(--text2);
+      border: 1.5px solid var(--border2);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-lt); }
+    .hero-stats {
+      display: flex; justify-content: center; gap: 2.5rem;
+      margin-top: 4.5rem; flex-wrap: wrap;
+    }
+    .stat-item { text-align: center; }
+    .stat-item .num { font-size: 2rem; font-weight: 800; color: var(--blue); letter-spacing: -.04em; }
+    .stat-item .lbl { font-size: .75rem; color: var(--muted); margin-top: .15rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+    .stat-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+    /* ─── SHARED SECTION ──────────────────────────────────────────────────── */
+    section { padding: 6rem 2rem; }
+    .container { max-width: 1080px; margin: 0 auto; }
+    .section-label {
+      font-size: .72rem; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--blue);
+      background: var(--blue-lt); border: 1px solid var(--blue-mid);
+      display: inline-block; padding: .25rem .7rem; border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+      font-weight: 800; letter-spacing: -.03em; line-height: 1.15;
+      color: var(--text); margin-bottom: .9rem;
+    }
+    .sub { font-size: 1rem; color: var(--muted); max-width: 520px; line-height: 1.75; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    }
+
+    /* ─── FEATURES ─────────────────────────────────────────────────────────── */
+    .features { background: var(--bg); }
+    .feat-hd { text-align: center; margin-bottom: 3.5rem; }
+    .feat-hd .sub { margin: 0 auto; }
+    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .feat-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.6rem;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      position: relative; overflow: hidden;
+    }
+    .feat-card:hover {
+      transform: translateY(-4px); box-shadow: var(--shadow-lg);
+      border-color: var(--feat-color, var(--blue));
+    }
+    .feat-icon-wrap {
+      width: 46px; height: 46px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 1rem;
+      background: var(--feat-bg, var(--blue-lt));
+    }
+    .feat-card h3 { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .45rem; }
+    .feat-card p { font-size: .85rem; color: var(--muted); line-height: 1.7; }
+    .feat-source {
+      margin-top: .85rem; display: flex; flex-wrap: wrap; gap: .35rem;
+    }
+    .tag {
+      font-family: 'JetBrains Mono', monospace; font-size: .72rem;
+      padding: .18rem .5rem; border-radius: 5px;
+      background: var(--bg2); color: var(--muted); border: 1px solid var(--border);
+    }
+
+    /* ─── PIPELINE ─────────────────────────────────────────────────────────── */
+    .pipeline { background: var(--white); }
+    .pipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+    .steps { display: flex; flex-direction: column; }
+    .step { display: flex; gap: 1.1rem; position: relative; padding-bottom: 2rem; }
+    .step:last-child { padding-bottom: 0; }
+    .step-track {
+      display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+    }
+    .step-num {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--blue-lt); border: 2px solid var(--blue-mid);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .82rem; color: var(--blue); z-index: 1;
+    }
+    .step-connector {
+      flex: 1; width: 2px; background: var(--border2); margin: 4px 0;
+    }
+    .step:last-child .step-connector { display: none; }
+    .step-body { padding-top: .4rem; }
+    .step-body h4 { font-size: .92rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+    .step-body p { font-size: .84rem; color: var(--muted); line-height: 1.65; }
+
+    /* terminal */
+    .terminal {
+      background: #1a1d27; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg); overflow: hidden;
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    .term-bar {
+      display: flex; align-items: center; gap: .45rem;
+      padding: .7rem 1rem; background: #13151e;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.r{background:#ff5f57;} .dot.y{background:#febc2e;} .dot.g{background:#28c840;}
+    .term-title { margin-left: .4rem; font-size: .75rem; color: #4b5563; }
+    .term-body { padding: 1.3rem 1.5rem 1.8rem; font-size: .79rem; line-height: 2.05; }
+    .tc { color: #374151; } .tcmd { color: #67e8f9; } .tflag { color: #fcd34d; }
+    .tok { color: #6ee7b7; } .twarn { color: #fb923c; } .tmt { color: #374151; }
+
+    /* ─── SCORING ──────────────────────────────────────────────────────────── */
+    .scoring { background: var(--bg); }
+    .score-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-top: 3rem; align-items: start; }
+    .formula-box {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);
+    }
+    .formula-box h3 { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 1rem; }
+    .formula-eq {
+      background: #1a1d27; border-radius: 10px; padding: 1rem 1.3rem;
+      font-family: 'JetBrains Mono', monospace; font-size: .88rem;
+      color: #67e8f9; text-align: center; margin-bottom: 1.4rem;
+    }
+    .comp-list { display: flex; flex-direction: column; gap: .6rem; }
+    .comp-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .7rem .9rem; background: var(--bg); border-radius: 9px;
+      border: 1px solid var(--border);
+    }
+    .comp-row .name { font-size: .88rem; font-weight: 600; }
+    .comp-row .src { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .weight-badge {
+      font-family: 'JetBrains Mono', monospace; font-size: .8rem; font-weight: 600;
+      padding: .25rem .6rem; border-radius: 6px;
+      background: var(--blue-lt); color: var(--blue);
+    }
+    .risk-table { display: flex; flex-direction: column; gap: .6rem; }
+    .risk-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: .8rem 1rem; border-radius: 10px;
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .2s;
+    }
+    .risk-item:hover { box-shadow: var(--shadow); }
+    .risk-badge {
+      min-width: 72px; text-align: center; padding: .25rem .6rem;
+      border-radius: 6px; font-size: .75rem; font-weight: 700;
+    }
+    .risk-range { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--muted); min-width: 48px; }
+    .risk-action { font-size: .84rem; color: var(--text2); flex: 1; }
+    .risk-bar-wrap { width: 70px; height: 5px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+    .risk-bar-fill { height: 100%; border-radius: 3px; }
+
+    /* ─── ARCHITECTURE ─────────────────────────────────────────────────────── */
+    .architecture { background: var(--white); }
+    .arch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-top: 3rem; }
+    .layer {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.6rem;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .layer:hover { border-color: var(--blue); box-shadow: var(--shadow); transform: translateY(-3px); }
+    .layer-num { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-bottom: .5rem; }
+    .layer h3 { font-size: .95rem; font-weight: 700; margin-bottom: .45rem; color: var(--text); }
+    .layer p { font-size: .84rem; color: var(--muted); line-height: 1.65; }
+    .chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .85rem; }
+    .chip { font-family: 'JetBrains Mono', monospace; font-size: .72rem; padding: .18rem .55rem; border-radius: 5px; background: var(--white); border: 1px solid var(--border); color: var(--muted); }
+    .stack-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1.8rem; margin-top: 2rem; overflow-x: auto;
+    }
+    .stack-grid { display: flex; gap: 2.5rem; min-width: 580px; flex-wrap: wrap; }
+    .stack-col { display: flex; flex-direction: column; gap: .4rem; }
+    .stack-col-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .5rem; }
+
+    /* ─── API TABLE ────────────────────────────────────────────────────────── */
+    .api { background: var(--bg); }
+    .table-wrap { overflow-x: auto; margin-top: 2.5rem; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+    table { width: 100%; border-collapse: collapse; font-size: .86rem; background: var(--white); }
+    thead { background: var(--bg2); }
+    th { padding: .85rem 1.2rem; text-align: left; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    td { padding: .82rem 1.2rem; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: var(--bg); }
+    .method { display: inline-block; padding: .2rem .55rem; border-radius: 5px; font-family: 'JetBrains Mono', monospace; font-size: .74rem; font-weight: 700; }
+    .m-post { background: var(--green-lt); color: var(--green); }
+    .m-get  { background: var(--blue-lt); color: var(--blue); }
+    .m-ws   { background: var(--purple-lt); color: var(--purple); }
+    .ep { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--cyan); }
+
+    /* ─── BENCHMARKS ───────────────────────────────────────────────────────── */
+    .benchmarks { background: var(--white); }
+    .bench-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem; }
+    .bench-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.6rem;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .bench-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); }
+    .bench-card h3 { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+    .bench-sub { font-size: .78rem; color: var(--muted); margin-bottom: 1.1rem; line-height: 1.5; }
+    .score-row { display: flex; align-items: baseline; gap: .45rem; margin-bottom: .4rem; }
+    .score-big { font-size: 2.2rem; font-weight: 800; letter-spacing: -.04em; }
+    .score-of { font-size: .95rem; color: var(--muted); }
+    .bar-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 1rem; }
+    .bar-fill { height: 100%; border-radius: 3px; }
+    .bench-info { display: flex; flex-direction: column; gap: .4rem; }
+    .bench-row { display: flex; justify-content: space-between; font-size: .82rem; }
+    .bench-row .k { color: var(--muted); }
+    .bench-row .v { font-weight: 600; color: var(--text2); }
+
+    /* ─── TEAM ─────────────────────────────────────────────────────────────── */
+    .team { background: var(--bg); }
+    .team-hd { text-align: center; margin-bottom: 3.5rem; }
+    .team-hd .sub { margin: 0 auto; }
+    .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+    .team-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.8rem 1.4rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .2s, transform .2s, border-color .2s;
+    }
+    .team-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); border-color: var(--blue); }
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      margin: 0 auto 1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 800;
+      color: var(--white);
+      box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    }
+    .team-card .first { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: .15rem; }
+    .team-card .last { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: .5rem; }
+    .team-card .affil {
+      font-size: .77rem; color: var(--muted); line-height: 1.5;
+      border-top: 1px solid var(--border); padding-top: .65rem; margin-top: .5rem;
+    }
+
+    /* ─── CTA ──────────────────────────────────────────────────────────────── */
+    .cta { background: var(--blue); padding: 6rem 2rem; text-align: center; position: relative; overflow: hidden; }
+    .cta::before {
+      content: ''; position: absolute; top: -100px; right: -100px;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: rgba(255,255,255,.05);
+    }
+    .cta::after {
+      content: ''; position: absolute; bottom: -80px; left: -80px;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: rgba(255,255,255,.04);
+    }
+    .cta .container { position: relative; z-index: 1; }
+    .cta .section-label { background: rgba(255,255,255,.15); color: rgba(255,255,255,.9); border-color: rgba(255,255,255,.2); }
+    .cta h2 { color: #fff; margin-bottom: .9rem; }
+    .cta p { color: rgba(255,255,255,.8); max-width: 440px; margin: 0 auto 2.5rem; line-height: 1.75; }
+    .cta-btns { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    .btn-white { background: #fff; color: var(--blue); font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.15); }
+    .btn-white:hover { background: var(--blue-lt); }
+    .btn-outline { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,.4); font-weight: 600; }
+    .btn-outline:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.7); }
+
+    /* ─── FOOTER ───────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--white); border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+    }
+    .foot-inner {
+      max-width: 1080px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1.2rem;
+    }
+    .foot-brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; font-size: .95rem; }
+    .foot-brand .icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--blue), #7b61ff); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .foot-links { display: flex; gap: 2rem; }
+    .foot-links a { font-size: .85rem; color: var(--muted); font-weight: 500; transition: color .2s; }
+    .foot-links a:hover { color: var(--blue); }
+    .foot-copy { font-size: .8rem; color: var(--muted2); }
+
+    /* ─── RESPONSIVE ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .feat-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipe-grid, .score-layout, .arch-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .bench-grid { grid-template-columns: 1fr; }
+      .team-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .feat-grid { grid-template-columns: 1fr; }
+      .team-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      section { padding: 4rem 1.2rem; }
+      .hero-stats { gap: 1.5rem; }
+      .stat-divider { display: none; }
+    }
+
+    /* ─── ANIMATIONS ──────────────────────────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .5s ease, transform .5s ease; }
+    .reveal.vis { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="icon">🛡️</div>
+    Dependency Risk Radar
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">Pipeline</a></li>
+    <li><a href="#scoring">Scoring</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#team">Team</a></li>
+    <li><a href="https://github.com/Fath-oth/Dependency-Risk-Radar" target="_blank" class="nav-cta">GitHub →</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-dots"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><span></span>Open Source · MIT · v1.0.0</div>
+    <h1>
+      <span class="grad">Dependency Risk Radar</span><br/>
+      Supply Chain Security<br/>for Android &amp; Java
+    </h1>
+    <p class="hero-sub">
+      Automatically audit your project dependencies across CVE exposure, version obsolescence,
+      licence compliance, and tracker detection — in under 60&nbsp;seconds.
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/Fath-oth/Dependency-Risk-Radar" target="_blank" class="btn btn-primary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#how-it-works" class="btn btn-secondary">See how it works ↓</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item"><div class="num">4</div><div class="lbl">Risk Dimensions</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><div class="num">5</div><div class="lbl">Data Sources</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><div class="num">&lt;60s</div><div class="lbl">Full Analysis</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><div class="num" id="gh-stars">—</div><div class="lbl">GitHub Stars</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><div class="num" id="gh-forks">—</div><div class="lbl">Forks</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="feat-hd reveal">
+      <div class="section-label">Capabilities</div>
+      <h2>Everything you need to secure your supply chain</h2>
+      <p class="sub">DRR combines automated SBOM generation, multi-criteria risk scoring, transitive risk propagation, and AI-powered remediation in a single open-source platform.</p>
+    </div>
+    <div class="feat-grid">
+
+      <div class="feat-card reveal" style="--feat-color:#dc2626; --feat-bg:#fef2f2">
+        <div class="feat-icon-wrap">🔍</div>
+        <h3>CVE Exposure Analysis</h3>
+        <p>Queries OSV.dev and NVD in parallel for every dependency. Computes CVSS v3.1 scores with penalties for unpatched vulnerabilities and known public exploits (+10 pts).</p>
+        <div class="feat-source"><span class="tag">OSV.dev</span><span class="tag">NVD</span><span class="tag">CVSS v3.1</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#ea580c; --feat-bg:#fff7ed">
+        <div class="feat-icon-wrap">📦</div>
+        <h3>Version Obsolescence</h3>
+        <p>Compares each dependency against the latest Maven Central release. Scores major/minor/patch version gaps and penalizes projects with no release activity for 2+ years.</p>
+        <div class="feat-source"><span class="tag">Maven Central</span><span class="tag">Semver</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#d97706; --feat-bg:#fffbeb">
+        <div class="feat-icon-wrap">⚖️</div>
+        <h3>Licence Compliance</h3>
+        <p>Maps every SPDX licence identifier to a legal risk tier. Detects copyleft contamination (GPL, AGPL) and unknown licences that could block your product release.</p>
+        <div class="feat-source"><span class="tag">SPDX</span><span class="tag">Copyleft</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#7c3aed; --feat-bg:#f5f3ff">
+        <div class="feat-icon-wrap">📡</div>
+        <h3>Tracker Detection</h3>
+        <p>Cross-references Dalvik bytecode class names against the Exodus Privacy database of 300+ known Android trackers, weighted by category (analytics, fingerprinting, surveillance).</p>
+        <div class="feat-source"><span class="tag">Exodus Privacy</span><span class="tag">androguard</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#0891b2; --feat-bg:#ecfeff">
+        <div class="feat-icon-wrap">🕸️</div>
+        <h3>Transitive Risk Propagation</h3>
+        <p>Models all components as a Directed Acyclic Graph using networkx. Propagates risk through the full dependency tree with exponential depth decay, identifying critical paths.</p>
+        <div class="feat-source"><span class="tag">networkx</span><span class="tag">DAG</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#059669; --feat-bg:#ecfdf5">
+        <div class="feat-icon-wrap">🤖</div>
+        <h3>AI Update Planner</h3>
+        <p>Sends the top-30 highest-risk components to the Gemini API with a structured prompt. Returns prioritized updates with effort estimates, migration notes, and an executive summary.</p>
+        <div class="feat-source"><span class="tag">Gemini API</span><span class="tag">Rule-based fallback</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#2f5fff; --feat-bg:#eef1ff">
+        <div class="feat-icon-wrap">📄</div>
+        <h3>Standards-Compliant SBOM</h3>
+        <p>Generates Software Bills of Materials in CycloneDX 1.5 (JSON/XML) and SPDX 2.3 (JSON/tag-value) formats with full Package URLs, SHA-256 hashes, and dependency relationships.</p>
+        <div class="feat-source"><span class="tag">CycloneDX 1.5</span><span class="tag">SPDX 2.3</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#db2777; --feat-bg:#fdf2f8">
+        <div class="feat-icon-wrap">📊</div>
+        <h3>Interactive Dashboard</h3>
+        <p>React 18 frontend with D3.js force-directed dependency graph, risk gauges, filterable component table, SBOM viewer, history tracking, and real-time SSE progress streaming.</p>
+        <div class="feat-source"><span class="tag">React 18</span><span class="tag">D3.js</span><span class="tag">WebSocket</span></div>
+      </div>
+
+      <div class="feat-card reveal" style="--feat-color:#0284c7; --feat-bg:#f0f9ff">
+        <div class="feat-icon-wrap">⚙️</div>
+        <h3>CLI &amp; CI/CD Integration</h3>
+        <p>Command-line interface with <code style="font-size:.82rem;background:var(--bg2);padding:.1rem .4rem;border-radius:4px;">--fail-threshold</code> and <code style="font-size:.82rem;background:var(--bg2);padding:.1rem .4rem;border-radius:4px;">--fail-on-critical</code> flags for automated pipeline gates. Zero-config with Docker Compose.</p>
+        <div class="feat-source"><span class="tag">CLI</span><span class="tag">Docker</span><span class="tag">Pipeline Gates</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section class="pipeline" id="how-it-works">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">End-to-End Pipeline</div>
+      <h2>From source to risk report<br/>in under 60 seconds</h2>
+      <p class="sub">Four decoupled layers process Gradle projects and compiled APKs through a fully automated, real-time pipeline.</p>
+    </div>
+    <div class="pipe-grid">
+      <div class="steps reveal">
+        <div class="step">
+          <div class="step-track"><div class="step-num">1</div><div class="step-connector"></div></div>
+          <div class="step-body">
+            <h4>Ingestion</h4>
+            <p>Accepts a Gradle project directory or compiled APK. The parser handles Groovy DSL, Kotlin DSL, and version catalogs, extracting direct and transitive dependencies by invoking <code style="font-size:.8rem">gradlew :app:dependencies</code>. APKs are analyzed with androguard.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-track"><div class="step-num">2</div><div class="step-connector"></div></div>
+          <div class="step-body">
+            <h4>Enrichment</h4>
+            <p>Five external data sources are queried in parallel: OSV.dev, NVD, Maven Central, Exodus Privacy, and ClearlyDefined. Results are cached in Redis for 24 hours, reducing latency for repeated queries.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-track"><div class="step-num">3</div><div class="step-connector"></div></div>
+          <div class="step-body">
+            <h4>Scoring &amp; Graph Analysis</h4>
+            <p>A weighted formula computes a global risk score [0–100] for each component. A networkx DAG propagates risk transitively with exponential depth decay and identifies critical paths and high-impact nodes.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-track"><div class="step-num">4</div><div class="step-connector"></div></div>
+          <div class="step-body">
+            <h4>SBOM Generation &amp; AI Planning</h4>
+            <p>CycloneDX and SPDX SBOMs are generated with full metadata. The top-30 highest-risk components are sent to the Gemini API for a prioritized update plan. A PDF report is also produced for audit compliance.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-track"><div class="step-num">5</div><div class="step-connector"></div></div>
+          <div class="step-body">
+            <h4>Dashboard &amp; Export</h4>
+            <p>Results are served through a REST/WebSocket API to a React dashboard with D3.js graph visualization, filterable component explorer, AI update plan view, SBOM explorer, and historical score tracking.</p>
+          </div>
+        </div>
+      </div>
+      <div class="terminal reveal">
+        <div class="term-bar">
+          <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+          <span class="term-title">drr — terminal</span>
+        </div>
+        <div class="term-body">
+          <div class="tc"># Quick start with Docker</div>
+          <div class="tcmd">$ git clone https://github.com/Fath-oth/<span style="color:#e2e8f0">Dependency-Risk-Radar</span></div>
+          <div class="tcmd">$ cd dependency-risk-radar && cp .env.example .env</div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tc"># Set your Gemini API key in .env, then:</div>
+          <div class="tcmd">$ docker-compose up -d</div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tok">✔ Backend  →  http://localhost:8000</div>
+          <div class="tok">✔ Frontend →  http://localhost:3000</div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tc"># Or use the CLI</div>
+          <div class="tcmd">$ python cli/drr.py analyze <span class="tflag">./my-android-app</span></div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tok">🔍 Parsing Gradle files...</div>
+          <div class="tok">📦 12 direct · 43 transitive deps found</div>
+          <div class="tok">🌐 Enriching via OSV.dev · NVD · Maven...</div>
+          <div class="twarn">⚠  CVE: jackson-databind (CVSS 9.8)</div>
+          <div class="tok">📄 SBOM: CycloneDX 1.5 · SPDX 2.3</div>
+          <div class="tok">🤖 AI update plan generated</div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tok">✅ Global score: <span class="twarn">64.2 / 100</span> <span style="color:#f97316">[HIGH]</span></div>
+          <div class="tmt">&nbsp;</div>
+          <div class="tc"># CI/CD gate</div>
+          <div class="tcmd">$ python cli/drr.py analyze . <span class="tflag">--fail-threshold 75</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCORING -->
+<section class="scoring" id="scoring">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Risk Scoring</div>
+      <h2>Transparent, weighted<br/>multi-criteria scoring</h2>
+      <p class="sub">Every dependency receives a global risk score [0–100] computed as a weighted average of four independent sub-scores, all normalised to the same scale.</p>
+    </div>
+    <div class="score-layout">
+      <div class="reveal">
+        <div class="formula-box">
+          <h3>Scoring Formula</h3>
+          <div class="formula-eq">Risk = 0.45·S<sub style="font-size:.7em">CVE</sub> + 0.25·S<sub style="font-size:.7em">obs</sub> + 0.20·S<sub style="font-size:.7em">lic</sub> + 0.10·S<sub style="font-size:.7em">track</sub></div>
+          <div class="comp-list">
+            <div class="comp-row">
+              <div><div class="name" style="color:var(--red)">CVE Score</div><div class="src">OSV.dev · NVD · CVSS v3.1</div></div>
+              <div class="weight-badge">45%</div>
+            </div>
+            <div class="comp-row">
+              <div><div class="name" style="color:var(--orange)">Obsolescence</div><div class="src">Maven Central · Version gap + Age</div></div>
+              <div class="weight-badge">25%</div>
+            </div>
+            <div class="comp-row">
+              <div><div class="name" style="color:var(--yellow)">Licence Risk</div><div class="src">SPDX identifier risk table</div></div>
+              <div class="weight-badge">20%</div>
+            </div>
+            <div class="comp-row">
+              <div><div class="name" style="color:var(--purple)">Tracker Score</div><div class="src">Exodus Privacy · 300+ trackers</div></div>
+              <div class="weight-badge">10%</div>
+            </div>
+          </div>
+          <div style="margin-top:1.2rem; padding:.9rem 1rem; background:var(--blue-lt); border:1px solid var(--blue-mid); border-radius:9px;">
+            <p style="font-size:.81rem; color:var(--text2); line-height:1.65;">
+              <strong>Transitive decay:</strong> indirect vulnerabilities are weighted as <code style="font-size:.8rem">score × 0.8<sup>depth−1</sup></code> — a CVE one hop away counts more than five hops away.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="risk-table reveal">
+        <h3 style="font-size:.92rem; font-weight:700; margin-bottom:1rem; color:var(--text)">Risk Levels &amp; Recommended Actions</h3>
+        <div class="risk-item">
+          <span class="risk-badge" style="background:var(--green-lt);color:var(--green)">Low</span>
+          <span class="risk-range">0–19</span>
+          <span class="risk-action">Standard monitoring</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:19%;background:var(--green)"></div></div>
+        </div>
+        <div class="risk-item">
+          <span class="risk-badge" style="background:var(--yellow-lt);color:var(--yellow)">Moderate</span>
+          <span class="risk-range">20–49</span>
+          <span class="risk-action">Schedule update next sprint</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:49%;background:var(--yellow)"></div></div>
+        </div>
+        <div class="risk-item">
+          <span class="risk-badge" style="background:var(--orange-lt);color:var(--orange)">High</span>
+          <span class="risk-range">50–74</span>
+          <span class="risk-action">Update within 2 weeks</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:74%;background:var(--orange)"></div></div>
+        </div>
+        <div class="risk-item">
+          <span class="risk-badge" style="background:var(--red-lt);color:var(--red)">Critical</span>
+          <span class="risk-range">75–89</span>
+          <span class="risk-action">Immediate update or mitigation</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:89%;background:var(--red)"></div></div>
+        </div>
+        <div class="risk-item" style="border-color:var(--red)">
+          <span class="risk-badge" style="background:var(--red-lt);color:var(--red);border:1px solid var(--red)">Blocking</span>
+          <span class="risk-range">90–100</span>
+          <span class="risk-action">Block deployment — fix before release</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:100%;background:linear-gradient(90deg,var(--red),#ff4444)"></div></div>
+        </div>
+        <div style="margin-top:1.2rem">
+          <h4 style="font-size:.85rem; font-weight:700; margin-bottom:.8rem; color:var(--text)">Licence Risk Table</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.4rem; font-size:.8rem;">
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">MIT / Apache 2.0</span><span style="color:var(--green);font-weight:700">0</span>
+            </div>
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">BSD 2/3-Clause</span><span style="color:var(--green);font-weight:700">5</span>
+            </div>
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">MPL 2.0</span><span style="color:var(--yellow);font-weight:700">20</span>
+            </div>
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">LGPL 2.1/3.0</span><span style="color:var(--yellow);font-weight:700">35</span>
+            </div>
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">GPL 2.0/3.0</span><span style="color:var(--orange);font-weight:700">75</span>
+            </div>
+            <div style="padding:.5rem .7rem; background:var(--white); border:1px solid var(--border); border-radius:7px; display:flex; justify-content:space-between;">
+              <span style="color:var(--muted)">AGPL 3.0</span><span style="color:var(--red);font-weight:700">90</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="architecture" id="architecture">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Architecture</div>
+      <h2>Four decoupled layers,<br/>one cohesive platform</h2>
+      <p class="sub">DRR is structured into four independent layers communicating through well-defined interfaces, making each component independently testable and replaceable.</p>
+    </div>
+    <div class="arch-grid">
+      <div class="layer reveal">
+        <div class="layer-num">Layer 1 — Ingestion</div>
+        <h3>Gradle Parsing &amp; APK Analysis</h3>
+        <p>Handles Groovy DSL, Kotlin DSL, and version catalogs. Invokes Gradle to obtain the full transitive dependency tree. Analyzes compiled APKs with androguard for class-level package inference and permission extraction.</p>
+        <div class="chips">
+          <span class="chip">Python 3.11</span><span class="chip">androguard</span><span class="chip">Gradle CLI</span><span class="chip">Regex DSL parser</span>
+        </div>
+      </div>
+      <div class="layer reveal">
+        <div class="layer-num">Layer 2 — Analysis</div>
+        <h3>Multi-criteria Scoring &amp; Graph</h3>
+        <p>Computes the four-dimensional risk score for each component. Builds a networkx DAG, detects high-impact nodes by in-degree, finds critical risk paths with <code style="font-size:.8rem">nx.shortest_path</code>, and aggregates transitive scores.</p>
+        <div class="chips">
+          <span class="chip">networkx</span><span class="chip">SQLite / PostgreSQL</span><span class="chip">SQLModel</span><span class="chip">Pydantic</span>
+        </div>
+      </div>
+      <div class="layer reveal">
+        <div class="layer-num">Layer 3 — AI</div>
+        <h3>Update Planning &amp; Narration</h3>
+        <p>Sends the top-30 highest-risk components to the Gemini Flash API with a structured system prompt. Generates per-component migration plans with priority, effort, and breaking-change risk. Falls back to rule-based planning if the API is unavailable.</p>
+        <div class="chips">
+          <span class="chip">Gemini Flash API</span><span class="chip">Structured prompts</span><span class="chip">Rule-based fallback</span>
+        </div>
+      </div>
+      <div class="layer reveal">
+        <div class="layer-num">Layer 4 — Presentation</div>
+        <h3>Dashboard, API &amp; Exports</h3>
+        <p>FastAPI backend with REST + WebSocket (real-time SSE progress). React 18 frontend with D3.js force-directed graph, Recharts dashboards, and shadcn/ui. Exports: CycloneDX, SPDX, PDF audit report, CSV.</p>
+        <div class="chips">
+          <span class="chip">FastAPI</span><span class="chip">React 18</span><span class="chip">D3.js</span><span class="chip">TailwindCSS</span><span class="chip">Vite</span><span class="chip">Redis</span>
+        </div>
+      </div>
+    </div>
+    <div class="stack-box reveal">
+      <div style="font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:1.2rem;">Full Technology Stack</div>
+      <div class="stack-grid">
+        <div class="stack-col">
+          <div class="stack-col-title" style="color:var(--blue)">Frontend</div>
+          <span class="chip">React 18</span><span class="chip">TypeScript</span><span class="chip">Vite</span><span class="chip">TailwindCSS</span><span class="chip">D3.js</span><span class="chip">shadcn/ui</span><span class="chip">Recharts</span>
+        </div>
+        <div class="stack-col">
+          <div class="stack-col-title" style="color:var(--cyan)">Backend</div>
+          <span class="chip">Python 3.11</span><span class="chip">FastAPI</span><span class="chip">Uvicorn</span><span class="chip">NetworkX</span><span class="chip">androguard</span><span class="chip">Pydantic</span>
+        </div>
+        <div class="stack-col">
+          <div class="stack-col-title" style="color:var(--green)">Data Sources</div>
+          <span class="chip">OSV.dev</span><span class="chip">NIST NVD</span><span class="chip">Maven Central</span><span class="chip">Exodus Privacy</span><span class="chip">CycloneDX 1.5</span><span class="chip">SPDX 2.3</span>
+        </div>
+        <div class="stack-col">
+          <div class="stack-col-title" style="color:var(--yellow)">Persistence</div>
+          <span class="chip">Redis</span><span class="chip">SQLite</span><span class="chip">PostgreSQL</span><span class="chip">SQLModel ORM</span>
+        </div>
+        <div class="stack-col">
+          <div class="stack-col-title" style="color:var(--purple)">AI &amp; Infra</div>
+          <span class="chip">Gemini API</span><span class="chip">Docker Compose</span><span class="chip">pytest 80+</span><span class="chip">Nginx</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BENCHMARKS -->
+<section class="benchmarks" id="benchmarks">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Validation</div>
+      <h2>Tested on real-world<br/>vulnerable benchmarks</h2>
+      <p class="sub">DRR was evaluated against three publicly available, intentionally vulnerable Android benchmarks widely used in mobile security research.</p>
+    </div>
+    <div class="bench-grid">
+      <div class="bench-card reveal">
+        <h3>DIVA Android</h3>
+        <p class="bench-sub">Damn Insecure &amp; Vulnerable App · Classic OWASP learning target</p>
+        <div class="score-row">
+          <span class="score-big" style="color:var(--orange)">52</span>
+          <span class="score-of">/100</span>
+          <span class="risk-badge" style="background:var(--orange-lt);color:var(--orange);margin-left:.4rem">HIGH</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:52%;background:var(--orange)"></div></div>
+        <div class="bench-info">
+          <div class="bench-row"><span class="k">Direct deps</span><span class="v">3</span></div>
+          <div class="bench-row"><span class="k">CVEs found</span><span class="v" style="color:var(--red)">1 (CVSS 5.9)</span></div>
+          <div class="bench-row"><span class="k">Critical component</span><span class="v">junit:4.12</span></div>
+          <div class="bench-row"><span class="k">Versions behind</span><span class="v">14</span></div>
+        </div>
+      </div>
+      <div class="bench-card reveal">
+        <h3>OWASP UnCrackable L2</h3>
+        <p class="bench-sub">Binary reverse-engineering challenge · 14 embedded dependencies</p>
+        <div class="score-row">
+          <span class="score-big" style="color:var(--orange)">64.2</span>
+          <span class="score-of">/100</span>
+          <span class="risk-badge" style="background:var(--orange-lt);color:var(--orange);margin-left:.4rem">HIGH</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:64.2%;background:var(--orange)"></div></div>
+        <div class="bench-info">
+          <div class="bench-row"><span class="k">Total components</span><span class="v">14</span></div>
+          <div class="bench-row"><span class="k">CVEs found</span><span class="v" style="color:var(--red)">69 CVEs</span></div>
+          <div class="bench-row"><span class="k">Critical component</span><span class="v">jackson-databind</span></div>
+          <div class="bench-row"><span class="k">Analysis mode</span><span class="v">APK binary</span></div>
+        </div>
+      </div>
+      <div class="bench-card reveal">
+        <h3>DamnVulnerableBank</h3>
+        <p class="bench-sub">Modern banking app · Firebase, Volley, RxJava dependencies</p>
+        <div class="score-row">
+          <span class="score-big" style="color:var(--yellow)">25.5</span>
+          <span class="score-of">/100</span>
+          <span class="risk-badge" style="background:var(--yellow-lt);color:var(--yellow);margin-left:.4rem">MODERATE</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:25.5%;background:var(--yellow)"></div></div>
+        <div class="bench-info">
+          <div class="bench-row"><span class="k">Direct deps</span><span class="v">13</span></div>
+          <div class="bench-row"><span class="k">CVEs found</span><span class="v" style="color:var(--green)">0</span></div>
+          <div class="bench-row"><span class="k">Outdated libs</span><span class="v">2 (volley, rxjava)</span></div>
+          <div class="bench-row"><span class="k">Copyleft / Trackers</span><span class="v" style="color:var(--green)">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- API -->
+<section class="api" id="api">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">REST API</div>
+      <h2>Full API surface for<br/>CI/CD integration</h2>
+      <p class="sub">DRR exposes a REST API and WebSocket endpoint. Every analysis result is queryable programmatically — perfect for automated security pipelines.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="ep">/api/v1/analyze/gradle</span></td><td><span class="method m-post">POST</span></td><td>Analyse a server-side Gradle project path</td></tr>
+          <tr><td><span class="ep">/api/v1/analyze/apk</span></td><td><span class="method m-post">POST</span></td><td>Upload and analyse a compiled APK file</td></tr>
+          <tr><td><span class="ep">/api/v1/jobs/{id}</span></td><td><span class="method m-get">GET</span></td><td>Poll analysis job status and progress</td></tr>
+          <tr><td><span class="ep">/ws/analyze/{id}</span></td><td><span class="method m-ws">WS</span></td><td>Real-time progress stream via WebSocket / SSE</td></tr>
+          <tr><td><span class="ep">/api/v1/reports</span></td><td><span class="method m-get">GET</span></td><td>List all saved analysis reports</td></tr>
+          <tr><td><span class="ep">/api/v1/reports/{id}</span></td><td><span class="method m-get">GET</span></td><td>Full report with all component scores</td></tr>
+          <tr><td><span class="ep">/api/v1/reports/{id}/components</span></td><td><span class="method m-get">GET</span></td><td>Paginated and filtered component list</td></tr>
+          <tr><td><span class="ep">/api/v1/reports/{id}/graph</span></td><td><span class="method m-get">GET</span></td><td>D3-ready dependency graph JSON</td></tr>
+          <tr><td><span class="ep">/api/v1/reports/{id}/update-plan</span></td><td><span class="method m-get">GET</span></td><td>AI-generated prioritized update plan</td></tr>
+          <tr><td><span class="ep">/api/v1/reports/{id}/sbom</span></td><td><span class="method m-get">GET</span></td><td>Download SBOM in CycloneDX or SPDX format</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="team" id="team">
+  <div class="container">
+    <div class="team-hd reveal">
+      <div class="section-label">Authors</div>
+      <h2>Built at ENSA Marrakech</h2>
+      <p class="sub">Dependency Risk Radar was designed and developed by four engineers at the National School of Applied Sciences, Cadi Ayyad University, Marrakech, Morocco.</p>
+    </div>
+    <div class="team-grid">
+
+      <div class="team-card reveal">
+        <div class="avatar" style="background:linear-gradient(135deg,#2f5fff,#7b61ff)">FA</div>
+        <div class="first">Mohammed Amine</div>
+        <div class="last">FAIK</div>
+        <div class="affil">Cadi Ayyad University<br/>ENSA Marrakech</div>
+      </div>
+
+      <div class="team-card reveal">
+        <div class="avatar" style="background:linear-gradient(135deg,#0891b2,#06b6d4)">FO</div>
+        <div class="first">Othmane</div>
+        <div class="last">FATH</div>
+        <div class="affil">Cadi Ayyad University<br/>ENSA Marrakech</div>
+      </div>
+
+      <div class="team-card reveal">
+        <div class="avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">IM</div>
+        <div class="first">Maryam</div>
+        <div class="last">IKHERAZEN</div>
+        <div class="affil">Cadi Ayyad University<br/>ENSA Marrakech</div>
+      </div>
+
+      <div class="team-card reveal">
+        <div class="avatar" style="background:linear-gradient(135deg,#db2777,#f472b6)">IA</div>
+        <div class="first">Aya</div>
+        <div class="last">ISEDRHAS</div>
+        <div class="affil">Cadi Ayyad University<br/>ENSA Marrakech</div>
+      </div>
+
+    </div>
+    <div class="reveal" style="text-align:center; margin-top:2.5rem; padding:1.5rem; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm)">
+      <p style="font-size:.9rem; color:var(--muted);">
+        Published in <strong style="color:var(--text)">SoftwareX</strong> · Contact:
+        <a href="mailto:m.faik2230@uca.ac.ma" style="color:var(--blue); font-weight:600;">m.faik2230@uca.ac.ma</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Get Started</div>
+      <h2>Secure your supply chain today</h2>
+      <p>DRR is open-source, self-hosted, and ready to deploy in minutes with Docker. No vendor lock-in, no SaaS subscription — full control over your data.</p>
+      <div class="cta-btns">
+        <a href="https://github.com/Fath-oth/Dependency-Risk-Radar" target="_blank" class="btn btn-white">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          Clone on GitHub
+        </a>
+        <a href="https://github.com/Fath-oth/Dependency-Risk-Radar/blob/main/README.md" target="_blank" class="btn btn-outline">Read the docs →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-brand">
+      <div class="icon">🛡️</div>
+      Dependency Risk Radar
+    </div>
+    <div class="foot-links">
+      <a href="https://github.com/Fath-oth/Dependency-Risk-Radar" target="_blank">GitHub</a>
+      <a href="https://github.com/Fath-oth/Dependency-Risk-Radar/blob/main/README.md" target="_blank">Documentation</a>
+      <a href="mailto:m.faik2230@uca.ac.ma">Contact</a>
+    </div>
+    <div class="foot-copy">ENSA Marrakech · Cadi Ayyad University · MIT License</div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('vis'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+  document.querySelectorAll('.reveal').forEach((el, i) => {
+    el.style.transitionDelay = (i % 3) * 0.07 + 's';
+    obs.observe(el);
+  });
+
+  // Live GitHub stats (public API, no auth needed)
+  fetch('https://api.github.com/repos/Fath-oth/Dependency-Risk-Radar')
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      const stars = data.stargazers_count;
+      const forks = data.forks_count;
+      document.getElementById('gh-stars').textContent = stars >= 1000
+        ? (stars / 1000).toFixed(1) + 'k' : stars;
+      document.getElementById('gh-forks').textContent = forks >= 1000
+        ? (forks / 1000).toFixed(1) + 'k' : forks;
+    })
+    .catch(() => {
+      document.getElementById('gh-stars').textContent = '★';
+      document.getElementById('gh-forks').textContent = '⑂';
+    });
+</script>
+</body>
+</html>
