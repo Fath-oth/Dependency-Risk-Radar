@@ -165,16 +165,79 @@ def _parse_osv_vuln(v: dict) -> CVE:
 
 
 def _extract_cvss_score(vector_string: str) -> Optional[float]:
-    """Extract the base score from a CVSS vector string or score string."""
-    # Sometimes the API returns just the float score as a string
+    """
+    Extract a numeric CVSS base score from various formats returned by OSV.dev.
+
+    OSV severity entries use type=CVSS_V3 with the score field containing either:
+      - A plain float string: "7.5"
+      - A CVSS vector string: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        (the numeric score is NOT embedded in the vector — we must compute it
+        from the metric components, or fall back to a severity-band estimate)
+
+    CVSS v3 base score bands by common AV/AC/PR/UI/S/C/I/A combos:
+      Critical (9.0–10.0): AV:N, AC:L, PR:N, UI:N, S:C or (C/I/A all H)
+      High     (7.0–8.9):  Network reachable, low complexity
+      Medium   (4.0–6.9):  Some mitigating factors
+      Low      (0.1–3.9):  Local access or significant mitigations
+    """
+    import re as _re
+    if not vector_string:
+        return None
+
+    # Case 1: plain float string
     try:
         return float(vector_string)
-    except ValueError:
+    except (ValueError, TypeError):
         pass
-    # Try parsing "CVSS:3.1/AV:.../..." — score embedded in string
-    m = __import__("re").search(r"/(\d+\.\d+)$", vector_string)
+
+    # Case 2: CVSS vector string — estimate score from key metrics
+    if "CVSS:" in vector_string.upper():
+        metrics: dict[str, str] = {}
+        for part in vector_string.split("/")[1:]:  # skip "CVSS:3.x" prefix
+            if ":" in part:
+                k, v = part.split(":", 1)
+                metrics[k] = v
+
+        av  = metrics.get("AV", "")
+        ac  = metrics.get("AC", "")
+        pr  = metrics.get("PR", "")
+        ui  = metrics.get("UI", "")
+        s   = metrics.get("S", "")
+        c   = metrics.get("C", "")
+        i   = metrics.get("I", "")
+        a   = metrics.get("A", "")
+
+        high_impact   = sorted([c, i, a]).count("H") >= 2
+        none_impact   = c == "N" and i == "N" and a == "N"
+        network       = av == "N"
+        low_ac        = ac == "L"
+        no_pr         = pr == "N"
+        no_ui         = ui == "N"
+        scope_changed = s == "C"
+
+        if none_impact:
+            return 0.0
+        if network and low_ac and no_pr and no_ui and high_impact:
+            return 9.8 if scope_changed else 9.1
+        if network and low_ac and no_pr and high_impact:
+            return 8.8
+        if network and low_ac and high_impact:
+            return 8.1
+        if network and high_impact:
+            return 7.5
+        if network:
+            return 6.5
+        if av in ("A", "L") and high_impact:
+            return 6.1
+        return 4.3  # conservative default for unknown vectors
+
+    # Case 3: bare score at end of string (some older entries)
+    m = _re.search(r'(\d+\.\d+)\s*$', vector_string)
     if m:
-        return float(m.group(1))
+        val = float(m.group(1))
+        if 0.0 <= val <= 10.0:
+            return val
+
     return None
 
 

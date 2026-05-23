@@ -28,10 +28,10 @@ Dependency Risk Radar automatically audits Android/Java project dependencies, ge
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/Fath-oth/dependency-risk-radar
+git clone https://github.com/your-org/dependency-risk-radar
 cd dependency-risk-radar
 cp .env.example .env
-# Edit .env and set LLM_API_KEY
+# Edit .env and set ANTHROPIC_API_KEY
 
 # 2. Start all services
 docker-compose up -d
@@ -181,13 +181,35 @@ Tests cover:
 - **Enricher** — OSV parsing, licence matrix, tracker detection
 
 ---
-## Demonstration:
 
+## GitHub Actions Integration
 
+```yaml
+# .github/workflows/security.yml
+name: Dependency Security Check
+on: [push, pull_request]
 
-https://github.com/user-attachments/assets/d790578a-b50e-4f8b-8467-5739a6c605d1
-
-
+jobs:
+  dependency-risk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r backend/requirements.txt
+      - run: |
+          python cli/drr.py analyze . \
+            --fail-threshold 75 \
+            --fail-on-critical \
+            --output ./drr_reports
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drr-report
+          path: drr_reports/
+```
 
 ---
 

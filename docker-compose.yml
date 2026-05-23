@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   backend:
     build: ./backend
@@ -9,7 +8,7 @@ services:
       - drr_reports:/tmp/drr_reports
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - NVD_API_KEY=${NVD_API_KEY:-}
       - OUTPUT_DIR=/tmp/drr_reports

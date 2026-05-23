@@ -79,8 +79,13 @@ export const useStore = create((set, get) => ({
   // ── Graph data ──
   graphData: null,
   fetchGraph: async (reportId) => {
-    const { data } = await api.get(`/api/v1/reports/${reportId}/graph`);
-    set({ graphData: data });
+    set({ graphData: null });   // clear stale graph before fetching
+    try {
+      const { data } = await api.get(`/api/v1/reports/${reportId}/graph`);
+      set({ graphData: data });
+    } catch (e) {
+      set({ graphData: { nodes: [], edges: [] } });
+    }
   },
 
   // ── UI state ──

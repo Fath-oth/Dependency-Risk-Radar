@@ -21,7 +21,7 @@ export default function GraphView() {
   useEffect(() => {
     if (reportId) {
       if (!activeReport) fetchReport(reportId);
-      if (!graphData) fetchGraph(reportId);
+      fetchGraph(reportId);   // always re-fetch — clears stale data in store
     }
   }, [reportId]);
 
@@ -137,8 +137,16 @@ export default function GraphView() {
 
   if (!graphData) return <div className="flex items-center justify-center h-full"><Spinner size={10} /></div>;
 
+  const hasEdges = graphData.edges && graphData.edges.length > 0;
+
   return (
     <div className="relative w-full h-full bg-gray-950">
+      {/* No-edges warning */}
+      {graphData.nodes.length > 0 && !hasEdges && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-amber-900/90 border border-amber-600 rounded-xl px-4 py-2 text-amber-200 text-xs text-center max-w-sm">
+          ⚠️ Dependencies detected but no graph edges — transitive relationships could not be resolved for this project.
+        </div>
+      )}
       {/* Legend */}
       <div className="absolute top-4 left-4 z-10 bg-gray-900/90 border border-gray-700 rounded-xl p-3 text-xs space-y-1.5">
         <p className="text-gray-400 font-semibold mb-2">Risk Score</p>
